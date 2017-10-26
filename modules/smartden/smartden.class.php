@@ -86,21 +86,74 @@ function getParams() {
 function readState($device_id) {
     $device=SQLSelectOne("SELECT * FROM smartden_devices WHERE ID=".(int)$device_id);
     if (!$device['ID']) return;
-    $data=getURL('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD']);
-    $this->processStateXML($device_id,$device['DEVICE_TYPE'],$data);
+    if ($device['DEVICE_TYPE']=='daenetip4' || $device['DEVICE_TYPE']=='ip32in' || $device['DEVICE_TYPE']=='ip16r') {
+        $data=getURL('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD']);
+        $this->processStateXML($device_id,$device['DEVICE_TYPE'],$data);
+    }
+    if ($device['DEVICE_TYPE']=='daenetip3') {
+        $result='<xml>';
+        $data=getURL('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&AS0=?&AS1=?&AS2=?&AS3=?&AS4=?&AS5=?&AS6=?&AS7=?&AS8=?&AS9=?&AS10=?&AS11=?&AS12=?&AS13=?&AS14=?&AS15=?&'); // digital output
+        if (preg_match('/<body>(.+)<\/body>/is',$data,$m)) {
+            $data=$m[1];
+            if (preg_match_all('/as(\d+?)=(\d+)/is',$data,$m)) {
+                $total = count($m[1]);
+                for($i=0;$i<$total;$i++) {
+                    $result.='<Output'.$m[1][$i].'><Value>'.$m[2][$i].'</Value></Output'.$m[1][$i].'>';
+                }
+            }
+        }
+        $data=getURL('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&BV0=?&BV1=?&BV2=?&BV3=?&BV4=?&BV5=?&BV6=?&BV7=?&CV0=?&CV1=?&CV2=?&CV3=?&CV4=?&CV5=?&CV6=?&CV7=?&'); // digital input
+        if (preg_match('/<body>(.+)<\/body>/is',$data,$m)) {
+            $data=$m[1];
+            if (preg_match_all('/bv(\d+?)=(\d+)/is',$data,$m)) {
+                $total = count($m[1]);
+                for($i=0;$i<$total;$i++) {
+                    $result.='<DigitalInput'.$m[1][$i].'><Value>'.$m[2][$i].'</Value></DigitalInput'.$m[1][$i].'>';
+                }
+            }
+            if (preg_match_all('/cv(\d+?)=(\d+)/is',$data,$m)) {
+                $total = count($m[1]);
+                for($i=0;$i<$total;$i++) {
+                    $result.='<AnalogInput'.$m[1][$i].'><Value>'.$m[2][$i].'</Value></AnalogInput'.$m[1][$i].'>';
+                }
+            }
+        }
+
+        $result.='</xml>';
+        $this->processStateXML($device_id,$device['DEVICE_TYPE'],$result);
+    }
 }
 
 function processStateXML($device_id,$device_type,$data) {
+    if (!$data) return false;
     $res = simplexml_load_string($data);
     $res = json_decode(json_encode($res),true);
     if (is_array($res)) {
-        if ($device_type=='ip16r') {
-            foreach($res as $k=>$v) {
-                $title=$v['Name'];
-                $value=$v['State'];
-                $this->processStateCommand($device_id,$k,$value,$title);
-            }
+        /*
+        if ($device_type=='daenetip3') {
+            print_r($res);exit;
         }
+        */
+            foreach($res as $k=>$v) {
+                $value_type=strtolower(preg_replace('/\d/','',$k));
+                if (isset($v['Name'])) {
+                    $title=$v['Name'];
+                } else {
+                    $title=$k;
+                }
+                if ($value_type=='relay') {
+                    $value = $v['State'];
+                    $this->processStateCommand($device_id,$k,$value,$title);
+                }
+                if ($value_type=='digitalinput' || $value_type=='analoginput' || $value_type=='temperatureinput' || $value_type=='output' || $value_type=='pwm') {
+                    $value = str_replace('---','',$v['Value']);
+                    $this->processStateCommand($device_id,$k,$value,$title);
+                }
+                if ($value_type=='digitalinput' && isset($v['Count'])) {
+                    $value = $v['Count'];
+                    $this->processStateCommand($device_id,$k.'_Counter',$value,$title.'_Counter');
+                }
+            }
     }
 }
 
@@ -206,8 +259,28 @@ function admin(&$out) {
 * @access public
 */
 function usual(&$out) {
+    if ($this->ajax) {
+        global $op;
+        if ($op=='processCycle') {
+            $this->processCycle();
+            echo "OK";
+        }
+        exit;
+    }
  $this->admin($out);
 }
+
+function processCycle() {
+    $devices=SQLSelect("SELECT * FROM smartden_devices WHERE UPDATE_PERIOD>0 AND NEXT_UPDATE<=NOW()");
+    $total = count($devices);
+    for ($i=0;$i<$total;$i++) {
+        $devices[$i]['NEXT_UPDATE']=date('Y-m-d H:i:s',time()+$devices[$i]['UPDATE_PERIOD']);
+        SQLUpdate('smartden_devices',$devices[$i]);
+        echo "Updating ".$devices[$i]['TITLE']."\n";
+        $this->readState($devices[$i]['ID']);
+    }
+}
+
 /**
 * smartden_devices search
 *
@@ -253,9 +326,18 @@ function usual(&$out) {
 
  function sendApiCommand($device_id,$command_name,$value) {
      $device=SQLSelectOne("SELECT * FROM smartden_devices WHERE ID=".$device_id);
-     if ($device['DEVICE_TYPE']=='ip16r') {
-         $res=getURL('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD'].'&'.$command_name.'='.$value);
+
+     if (preg_match('/p(\d+)/is',$value,$m1) && preg_match('/output(\d+)/is',$command_name,$m2)) {
+         $command_name='Pulse'.$m2[1];
+         $value=$m1[1];
+     }
+     if ($device['DEVICE_TYPE']=='ip16r' || $device['DEVICE_TYPE']=='daenetip4') {
+         $res=getURL('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&');
          $this->processStateXML($device['ID'],$device['DEVICE_TYPE'],$res);
+     }
+     if ($device['DEVICE_TYPE']=='daenetip3' && preg_match('/output(\d+)/is',$command_name,$m)) {
+         $command_name = 'AS'.$m[1];
+         $res=getURL('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&');
      }
  }
 
@@ -310,6 +392,8 @@ smartden_commands -
  smartden_devices: IP varchar(255) NOT NULL DEFAULT ''
  smartden_devices: PASSWORD varchar(255) NOT NULL DEFAULT ''
  smartden_devices: DEVICE_TYPE varchar(255) NOT NULL DEFAULT ''
+ smartden_devices: UPDATE_PERIOD int(10) NOT NULL DEFAULT '0'
+ smartden_devices: NEXT_UPDATE datetime
  
  smartden_commands: ID int(10) unsigned NOT NULL auto_increment
  smartden_commands: DEVICE_ID int(10) NOT NULL DEFAULT '0' 

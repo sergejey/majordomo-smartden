@@ -20,13 +20,21 @@
    }
   //updating 'IP' (varchar)
    global $ip;
-   $rec['IP']=$ip;
+   $rec['IP']=trim($ip);
+   $rec['IP']=str_replace('http://','',$rec['IP']);
   //updating 'PASSWORD' (varchar)
    global $password;
-   $rec['PASSWORD']=$password;
+   $rec['PASSWORD']=trim($password);
   //updating 'DEVICE_TYPE' (varchar)
    global $device_type;
    $rec['DEVICE_TYPE']=$device_type;
+
+      global $update_period;
+      $rec['UPDATE_PERIOD']=(int)$update_period;
+      if ($update_period>0) {
+          $rec['NEXT_UPDATE']=date('Y-m-d H:i:s',time()+$update_period);
+      }
+
   }
   // step: data
   if ($this->tab=='data') {
@@ -40,7 +48,9 @@
      $rec['ID']=SQLInsert($table_name, $rec); // adding new record
     }
     $out['OK']=1;
-       $this->readState($rec['ID']);
+       if ($this->tab=='') {
+           $this->readState($rec['ID']);
+       }
    } else {
     $out['ERR']=1;
    }
@@ -98,8 +108,14 @@
            addLinkedProperty($properties[$i]['LINKED_OBJECT'], $properties[$i]['LINKED_PROPERTY'], $this->name);
        }
 
-       if (preg_match('/relay/is',$properties[$i]['SYSTEM'])) {
+       if (preg_match('/relay/is',$properties[$i]['SYSTEM']) || preg_match('/output/is',$properties[$i]['SYSTEM'])) {
            $properties[$i]['SDEVICE_TYPE']='relay';
+       }
+       if (preg_match('/pwm/is',$properties[$i]['SYSTEM'])) {
+           $properties[$i]['SDEVICE_TYPE']='dimmer';
+       }
+       if (preg_match('/temperature/is',$properties[$i]['SYSTEM'])) {
+           $properties[$i]['SDEVICE_TYPE']='sensor_temp';
        }
    }
    $out['PROPERTIES']=$properties;   

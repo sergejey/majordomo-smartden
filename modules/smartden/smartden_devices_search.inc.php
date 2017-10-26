@@ -25,6 +25,12 @@
    $total=count($res);
    for($i=0;$i<$total;$i++) {
     // some action for every record if required
+    $commands=SQLSelect("SELECT * FROM smartden_commands WHERE DEVICE_ID=".$res[$i]['ID']." AND LINKED_OBJECT!=''");
+    if ($commands[0]['ID']) {
+     foreach($commands as $cmd) {
+      $res[$i]['LINKED_OBJECTS'].=$cmd['TITLE'].': '.$cmd['LINKED_OBJECT'].'.'.$cmd['LINKED_PROPERTY'].' ('.$cmd['VALUE'].')<br/>';
+     }
+    }
    }
    $out['RESULT']=$res;
   }
