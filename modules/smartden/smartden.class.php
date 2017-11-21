@@ -18,7 +18,7 @@ class smartden extends module {
 */
 function smartden() {
   $this->name="smartden";
-  $this->title="SmartDen";
+  $this->title="Denkovi"; //
   $this->module_category="<#LANG_SECTION_DEVICES#>";
   $this->checkInstalled();
 }
