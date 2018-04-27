@@ -87,12 +87,12 @@ function readState($device_id) {
     $device=SQLSelectOne("SELECT * FROM smartden_devices WHERE ID=".(int)$device_id);
     if (!$device['ID']) return;
     if ($device['DEVICE_TYPE']=='daenetip4' || $device['DEVICE_TYPE']=='ip32in' || $device['DEVICE_TYPE']=='ip16r') {
-        $data=getURL('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD']);
+        $data=file_get_contents('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD']);
         $this->processStateXML($device_id,$device['DEVICE_TYPE'],$data);
     }
     if ($device['DEVICE_TYPE']=='daenetip3') {
         $result='<xml>';
-        $data=getURL('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&AS0=?&AS1=?&AS2=?&AS3=?&AS4=?&AS5=?&AS6=?&AS7=?&AS8=?&AS9=?&AS10=?&AS11=?&AS12=?&AS13=?&AS14=?&AS15=?&'); // digital output
+        $data=file_get_contents('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&AS0=?&AS1=?&AS2=?&AS3=?&AS4=?&AS5=?&AS6=?&AS7=?&AS8=?&AS9=?&AS10=?&AS11=?&AS12=?&AS13=?&AS14=?&AS15=?&'); // digital output
         if (preg_match('/<body>(.+)<\/body>/is',$data,$m)) {
             $data=$m[1];
             if (preg_match_all('/as(\d+?)=(\d+)/is',$data,$m)) {
@@ -102,7 +102,7 @@ function readState($device_id) {
                 }
             }
         }
-        $data=getURL('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&BV0=?&BV1=?&BV2=?&BV3=?&BV4=?&BV5=?&BV6=?&BV7=?&CV0=?&CV1=?&CV2=?&CV3=?&CV4=?&CV5=?&CV6=?&CV7=?&'); // digital input
+        $data=file_get_contents('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&BV0=?&BV1=?&BV2=?&BV3=?&BV4=?&BV5=?&BV6=?&BV7=?&CV0=?&CV1=?&CV2=?&CV3=?&CV4=?&CV5=?&CV6=?&CV7=?&'); // digital input
         if (preg_match('/<body>(.+)<\/body>/is',$data,$m)) {
             $data=$m[1];
             if (preg_match_all('/bv(\d+?)=(\d+)/is',$data,$m)) {
@@ -177,7 +177,7 @@ function processStateCommand($device_id,$command_name,$value, $title = '') {
     }
 
     if ($command['LINKED_OBJECT'] && $command['LINKED_PROPERTY']) {
-        sg($command['LINKED_OBJECT'].'.'.$command['LINKED_PROPERTY'],$value);
+        sg($command['LINKED_OBJECT'].'.'.$command['LINKED_PROPERTY'],$value, array($this->name=>'0'));
     }
     if ($command['LINKED_OBJECT'] && $command['LINKED_METHOD'] && $updated) {
         $params=array('VALUE'=>$value);
