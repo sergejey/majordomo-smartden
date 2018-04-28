@@ -176,7 +176,7 @@ function processStateCommand($device_id,$command_name,$value, $title = '') {
         SQLUpdate('smartden_commands',$command);
     }
 
-    if ($command['LINKED_OBJECT'] && $command['LINKED_PROPERTY']) {
+    if ($command['LINKED_OBJECT'] && $command['LINKED_PROPERTY'] && $updated) {
         sg($command['LINKED_OBJECT'].'.'.$command['LINKED_PROPERTY'],$value, array($this->name=>'0'));
     }
     if ($command['LINKED_OBJECT'] && $command['LINKED_METHOD'] && $updated) {
@@ -332,12 +332,12 @@ function processCycle() {
          $value=$m1[1];
      }
      if ($device['DEVICE_TYPE']=='ip16r' || $device['DEVICE_TYPE']=='daenetip4') {
-         $res=getURL('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&');
+         $res=file_get_contents('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&');
          $this->processStateXML($device['ID'],$device['DEVICE_TYPE'],$res);
      }
      if ($device['DEVICE_TYPE']=='daenetip3' && preg_match('/output(\d+)/is',$command_name,$m)) {
          $command_name = 'AS'.$m[1];
-         $res=getURL('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&');
+         $res=file_get_contents('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&');
      }
  }
 
