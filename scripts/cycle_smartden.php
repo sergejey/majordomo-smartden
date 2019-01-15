@@ -18,8 +18,8 @@ $latest_check=0;
 $checkEvery=10; // poll every XX seconds
 while (1)
 {
-   setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
    if ((time()-$latest_check)>$checkEvery) {
+      setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
       $latest_check=time();
       //$url=BASE_URL.'/ajax/smartden.html?op=processCycle';
       //getURLBackground($url);
