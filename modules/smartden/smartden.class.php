@@ -99,7 +99,7 @@ function readState($device_id) {
                 $total = count($m[1]);
                 for($i=0;$i<$total;$i++) {
                     $item=hexdec($m[1][$i]);
-                    $result.='<Output'.$item.'><Value>'.$m[2][$i].'</Value></Output'.$m[1][$i].'>';
+                    $result.='<Output'.$item.'><Value>'.$m[2][$i].'</Value></Output'.$item.'>';
                 }
             }
         }
