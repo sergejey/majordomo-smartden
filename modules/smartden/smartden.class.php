@@ -333,12 +333,12 @@ function processCycle() {
          $value=$m1[1];
      }
      if ($device['DEVICE_TYPE']=='ip16r' || $device['DEVICE_TYPE']=='daenetip4') {
-         $res=getURL('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&',0);
+         $res=file_get_contents('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&',0);
          $this->processStateXML($device['ID'],$device['DEVICE_TYPE'],$res);
      }
      if ($device['DEVICE_TYPE']=='daenetip3' && preg_match('/output(\d+)/is',$command_name,$m)) {
          $command_name = 'AS'.strtoupper(dechex($m[1]));
-         getURLBackground('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&',0);
+         file_get_contents('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&',0);
      }
  }
 
