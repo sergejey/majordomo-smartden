@@ -87,12 +87,16 @@ function readState($device_id) {
     $device=SQLSelectOne("SELECT * FROM smartden_devices WHERE ID=".(int)$device_id);
     if (!$device['ID']) return;
     if ($device['DEVICE_TYPE']=='daenetip4' || $device['DEVICE_TYPE']=='ip32in' || $device['DEVICE_TYPE']=='ip16r') {
-        $data=file_get_contents('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD']);
+        $url = 'http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD'];
+        $data=file_get_contents($url);
+        DebMes("URL $url:\n".$data,'smartden');
         $this->processStateXML($device_id,$device['DEVICE_TYPE'],$data);
     }
     if ($device['DEVICE_TYPE']=='daenetip3') {
         $result='<xml>';
-        $data=file_get_contents('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&AS0=?&AS1=?&AS2=?&AS3=?&AS4=?&AS5=?&AS6=?&AS7=?&AS8=?&AS9=?&ASA=?&ASB=?&ASC=?&ASD=?&ASE=?&ASF=?&'); // digital output
+        $url='http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&AS0=?&AS1=?&AS2=?&AS3=?&AS4=?&AS5=?&AS6=?&AS7=?&AS8=?&AS9=?&ASA=?&ASB=?&ASC=?&ASD=?&ASE=?&ASF=?&';
+        $data=file_get_contents($url); // digital output
+        DebMes("URL $url:\n".$data,'smartden');
         if (preg_match('/<body>(.+)<\/body>/is',$data,$m)) {
             $data=$m[1];
             if (preg_match_all('/as(\w+?)=(\d+)/is',$data,$m)) {
@@ -103,7 +107,9 @@ function readState($device_id) {
                 }
             }
         }
-        $data=file_get_contents('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&BV0=?&BV1=?&BV2=?&BV3=?&BV4=?&BV5=?&BV6=?&BV7=?&CV0=?&CV1=?&CV2=?&CV3=?&CV4=?&CV5=?&CV6=?&CV7=?&'); // digital input
+        $url='http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&BV0=?&BV1=?&BV2=?&BV3=?&BV4=?&BV5=?&BV6=?&BV7=?&CV0=?&CV1=?&CV2=?&CV3=?&CV4=?&CV5=?&CV6=?&CV7=?&';
+        $data=file_get_contents($url); // digital input
+        DebMes("URL $url:\n".$data,'smartden');
         if (preg_match('/<body>(.+)<\/body>/is',$data,$m)) {
             $data=$m[1];
             if (preg_match_all('/bv(\d+?)=(\d+)/is',$data,$m)) {
@@ -119,7 +125,6 @@ function readState($device_id) {
                 }
             }
         }
-
         $result.='</xml>';
         $this->processStateXML($device_id,$device['DEVICE_TYPE'],$result);
     }
@@ -333,12 +338,16 @@ function processCycle() {
          $value=$m1[1];
      }
      if ($device['DEVICE_TYPE']=='ip16r' || $device['DEVICE_TYPE']=='daenetip4') {
-         $res=file_get_contents('http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&',0);
+         $url='http://'.$device['IP'].'/current_state.xml?pw='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&';
+         $res=file_get_contents($url);
+         DebMes("URL $url:\n$res",'smartden_control');
          $this->processStateXML($device['ID'],$device['DEVICE_TYPE'],$res);
      }
      if ($device['DEVICE_TYPE']=='daenetip3' && preg_match('/output(\d+)/is',$command_name,$m)) {
          $command_name = 'AS'.strtoupper(dechex($m[1]));
-         file_get_contents('http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&',0);
+         $url = 'http://'.$device['IP'].'/Command.html?P='.$device['PASSWORD'].'&'.$command_name.'='.$value.'&';
+         $res=file_get_contents($url);
+         DebMes("URL $url:\n$res",'smartden_control');
      }
  }
 
